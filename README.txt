@@ -18,6 +18,8 @@ Automates DNSSD-powered serving and cloning of git repositories.
 == REQUIREMENTS:
 
 * dnssd
+  Linux users may need to follow these instructions:
+    http://yob.id.au/blog/2008/06/01/gitjour_on_linux/
 
 == INSTALL:
 
