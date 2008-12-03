@@ -14,7 +14,7 @@ module Gitjour
       def run(*args)
         case args.shift
           when "list"
-            list
+            list(*args)
           when "clone"
             clone(*args)
           when "serve"
@@ -27,16 +27,23 @@ module Gitjour
       end
 
       private
-			def list
-				service_list.each do |service|
-          puts "=== #{service.name} on #{service.host}:#{service.port} ==="
-          puts "  gitjour clone #{service.name}"
-          if service.description != '' && service.description !~ /^Unnamed repository/
-            puts "  #{service.description}"
+			def list(*args)
+        timeout =
+          if args.first.to_i.to_s == args.first
+            args.first.to_i
           end
-          puts
-        end
+          
+				service_list(timeout)
 			end
+
+      def show_service(service)
+        puts "=== #{service.name} on #{service.host}:#{service.port} ==="
+        puts "  gitjour clone #{service.name}"
+        if service.description != '' && service.description !~ /^Unnamed repository/
+          puts "  #{service.description}"
+        end
+        puts
+      end
 
       def clone(repository_name, *rest)
         dir = rest.shift || repository_name
@@ -94,7 +101,7 @@ module Gitjour
         puts "Serve up and use git repositories via Bonjour/DNSSD."
         puts "\nUsage: gitjour <command> [args]"
         puts
-        puts "  list"
+        puts "  list <timeout>"
         puts "      Lists available repositories."
         puts
         puts "  clone <project> [<directory>]"
@@ -132,15 +139,22 @@ module Gitjour
                                      resolve_reply.port,
                                      resolve_reply.text_record['description'].to_s)
             begin
-              yield service
+              show_service service
             rescue Done
               waiting_thread.run
             end
           end
         end
 
-        puts "Gathering for up to #{timeout} seconds..."
-        sleep timeout
+        if timeout
+          puts "Gathering for up to #{timeout} seconds..."
+          sleep timeout
+        else
+          puts "Gathering until interrupted(^C)..."
+          loop do
+            sleep 10
+          end
+        end
         dns.stop
       end
 
@@ -157,9 +171,9 @@ module Gitjour
         return found
       end
 
-      def service_list
+      def service_list(timeout)
         list = Set.new
-        discover { |obj| list << obj }
+        discover(timeout) { |obj| list << obj }
 
         return list
       end
