@@ -1,5 +1,5 @@
 require 'rubygems'
-require 'dnssd'
+require 'net/dns/mdns-sd'
 require 'set'
 
 Thread.abort_on_exception = true
@@ -59,7 +59,7 @@ module Gitjour
 
         puts "Connecting to #{service.host}:#{service.port}"
 
-        system "git clone git://#{service.host}:#{service.port}/ #{dir}/"
+        system "git clone git://#{service.host}:#{service.port}/ #{dir}"
       end
 
       def remote(repository_name, *rest)
@@ -132,10 +132,11 @@ module Gitjour
       def discover(timeout = 5, show = false)
         waiting_thread = Thread.current
 
-        dns = DNSSD.browse "_git._tcp" do |reply|
-          DNSSD.resolve reply.name, reply.type, reply.domain do |resolve_reply|
+        dns = Net::DNS::MDNSSD.browse "_git._tcp" do |reply|
+          Net::DNS::MDNSSD.resolve reply.name, reply.type, reply.domain do |resolve_reply|
             begin
-              if (reply.flags & DNSSD::Flags::Add) != 0
+              puts "#{reply.flags & resolve_reply.flags}"
+              if (reply.flags & resolve_reply.flags) != 0
                 service = GitService.new(reply.name,
                                          resolve_reply.target,
                                          resolve_reply.port,
@@ -188,10 +189,10 @@ module Gitjour
       def announce_repo(path, name, port)
         return unless File.exists?("#{path}/.git")
 
-        tr = DNSSD::TextRecord.new
-        tr['description'] = File.read("#{path}/.git/description") rescue "a git project"
+        text_record = {}
+        text_record['description'] = File.read("#{path}/.git/description") rescue "a git project"
 
-        DNSSD.register(name, "_git._tcp", 'local', port, tr.encode, DNSSD::Flags::Add) do |rr|
+        Net::DNS::MDNSSD.register(name, "_git._tcp", 'local', port, text_record) do |rr|
           puts "Registered #{name} on port #{port}. Starting service."
         end
       end
