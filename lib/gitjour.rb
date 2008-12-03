@@ -129,7 +129,7 @@ module Gitjour
 
       class Done < RuntimeError; end
 
-      def discover(timeout=5)
+      def discover(timeout = 5, show = false)
         waiting_thread = Thread.current
 
         dns = DNSSD.browse "_git._tcp" do |reply|
@@ -140,7 +140,12 @@ module Gitjour
                                          resolve_reply.target,
                                          resolve_reply.port,
                                          resolve_reply.text_record['description'].to_s)
-                show_service service
+
+                if show
+                  show_service service
+                else
+                  yield service
+                end
               end
             rescue Done
               waiting_thread.run
@@ -175,7 +180,7 @@ module Gitjour
 
       def service_list(timeout)
         list = Set.new
-        discover(timeout) { |obj| list << obj }
+        discover(timeout, true) { |obj| list << obj }
 
         return list
       end
